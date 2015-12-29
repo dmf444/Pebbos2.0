@@ -7,6 +7,9 @@ var Settings = require('settings');
 // IP Address of a Sonos Speaker, may not be set yet
 var ipAddress = Settings.option('ip');
 
+//Array that stores UUIDs
+var speakerUUID = [];
+
 // If not set use a default one
 if (!ipAddress) {
 	Settings.option('ip', '192.168.1.57');
@@ -30,7 +33,8 @@ ajax(
 		// Half-inched from https://github.com/owlandgiraffe/Sobble
 		var names = data.match(/>([A-Za-z0-9s\- ]+?)<\/ZonePlayer>/gm),
 			locations = data.match(/location='(.+?)'/gm),
-			coordinators = data.match(/coordinator='(.+?)'/gm);
+			coordinators = data.match(/coordinator='(.+?)'/gm),
+				uuids = data.match(/uuid='(.+?)'/gm);
 
 		speakersArray = [];
 
@@ -39,7 +43,8 @@ ajax(
 				var loc = {
 					name: names[i].match(/>(.*?)</)[1],
 					ip: locations[i].match(/http:\/\/(.*):/)[1],
-					coordinator: coordinators[i].match(/'(.+?)'/)[0]
+					coordinator: coordinators[i].match(/'(.+?)'/)[0],
+					uuid: uuids[i].match(/'(.+?)'/)[1]
 				};
 
 				// Skip Bridge
@@ -54,6 +59,7 @@ ajax(
 				// Some players are marked as false if they're grouped 
 				if (loc.coordinator.indexOf('true') > -1) {
 					speakersArray.push({title: loc.name, subtitle: loc.ip});
+					speakerUUID.push(loc.uuid);
 				}
 			}
 		}
@@ -72,7 +78,8 @@ ajax(
 
 		menu.on('select', function(e) {
 			var volume = 0;
-
+			var uuid = speakerUUID[e.itemIndex];
+			
 			// Get Volume of selected speaker
 			makeRequestToSonosZone(
 				e.item.subtitle,
@@ -90,6 +97,7 @@ ajax(
 
 			var actionsMenu = new UI.Menu({
 				sections: [{
+					title: 'Actions',
 					items: [{
 						title: 'Play'
 					}, {
@@ -147,7 +155,7 @@ ajax(
 						"SetAVTransportURI",
 						"/MediaRenderer/AVTransport/Control",
 						"urn:schemas-upnp-org:service:AVTransport:1#SetAVTransportURI",
-						"<u:SetAVTransportURI xmlns:u=\"urn:schemas-upnp-org:service:AVTransport:1\"><InstanceID>0</InstanceID><CurrentURI>x-sonos-htastream:RINCON_5CAAFD12AF0601400:spdif</CurrentURI><CurrentURIMetaData></CurrentURIMetaData></u:SetAVTransportURI>")
+						"<u:SetAVTransportURI xmlns:u=\"urn:schemas-upnp-org:service:AVTransport:1\"><InstanceID>0</InstanceID><CurrentURI>x-sonos-htastream:" +uuid +":spdif</CurrentURI><CurrentURIMetaData></CurrentURIMetaData></u:SetAVTransportURI>")
 				);
 				}});
 			actionsMenu.show();
